@@ -1,0 +1,59 @@
+name: Extract libicu assets
+
+on:
+  schedule:
+    - cron: "0 7 * * 0"   # Every Sunday 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Copy aarch64 → arm64-v8a
+        run: |
+          cp -a libicu/aarch64/data/data/com.termux/files/usr/include arm64-v8a/
+          cp -a libicu/aarch64/data/data/com.termux/files/usr/lib arm64-v8a/
+          cp -a libicu/aarch64/data/data/com.termux/files/usr/share arm64-v8a/
+
+      - name: Copy arm → armeabi-v7a
+        run: |
+          cp -a libicu/arm/data/data/com.termux/files/usr/include armeabi-v7a/
+          cp -a libicu/arm/data/data/com.termux/files/usr/lib armeabi-v7a/
+          cp -a libicu/arm/data/data/com.termux/files/usr/share armeabi-v7a/
+
+      - name: Copy i686 → x86
+        run: |
+          cp -a libicu/i686/data/data/com.termux/files/usr/include x86/
+          cp -a libicu/i686/data/data/com.termux/files/usr/lib x86/
+          cp -a libicu/i686/data/data/com.termux/files/usr/share x86/
+
+      - name: Copy x86_64 → x86_64
+        run: |
+          cp -a libicu/x86_64/data/data/com.termux/files/usr/include x86_64/
+          cp -a libicu/x86_64/data/data/com.termux/files/usr/lib x86_64/
+          cp -a libicu/x86_64/data/data/com.termux/files/usr/share x86_64/
+
+      - name: Commit and push extracted libicu assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          if [ -n "$(git status --porcelain arm64-v8a armeabi-v7a x86 x86_64)" ]; then
+            git add arm64-v8a armeabi-v7a x86 x86_64
+            git commit -m "Extracted libicu assets into ABI directories"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
+          else
+            echo "No updates found."
+          fi
