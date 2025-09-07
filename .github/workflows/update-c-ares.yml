@@ -1,0 +1,52 @@
+name: Update c-ares
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight UTC
+  workflow_dispatch: # allow manual runs
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget dpkg-dev
+
+      - name: Get latest c-ares version
+        id: version
+        run: |
+          BASE_URL="https://grimler.se/termux-packages-24/pool/main/c/c-ares/"
+          INDEX=$(wget -qO- $BASE_URL)
+          LATEST=$(echo "$INDEX" | grep -oP 'c-ares_\K[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+
+      - name: Download and extract debs
+        run: |
+          mkdir -p c-ares
+          BASE_URL="https://grimler.se/termux-packages-24/pool/main/c/c-ares/"
+          for arch in aarch64 arm i686 x86_64; do
+            FILE="c-ares_${{ steps.version.outputs.latest }}_${arch}.deb"
+            wget -q ${BASE_URL}${FILE}
+            mkdir -p c-ares/$arch
+            dpkg-deb -x $FILE c-ares/$arch
+            rm $FILE
+          done
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain c-ares)" ]; then
+            git add c-ares
+            git commit -m "Update c-ares to version ${{ steps.version.outputs.latest }}"
+            git push
+          else
+            echo "No updates found."
+          fi
