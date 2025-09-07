@@ -6,8 +6,7 @@ on:
   workflow_dispatch:       # allow manual trigger
 
 permissions:
-  contents: write
-
+  contents: write   # allow pushing commits
 
 jobs:
   update-libcxx:
@@ -17,7 +16,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          persist-credentials: false   # disable default
+          fetch-depth: 0
 
       - name: Install tools
         run: |
@@ -27,27 +27,27 @@ jobs:
       - name: Get latest libc++ version
         id: get_version
         run: |
-          BASE_URL="https://grimler.se/termux-packages-24/pool/main/l/libc++/"
-          # Fetch index and extract latest version filename
-          wget -qO- "$BASE_URL" | grep -o 'libc++_[0-9][^"]*aarch64.deb' | sort -V | tail -n1 > latest.txt
+          BASE_URL="https://grimler.se/termux-packages-24/pool/main/libc/libc++/"
+          wget -qO- "$BASE_URL" | grep -o 'libc++_[^"]*_aarch64.deb' | sort -V | tail -n1 > latest.txt
           FILE=$(cat latest.txt)
-          VERSION=$(echo "$FILE" | sed -E 's/libc\+\+_([0-9][^_]*)_.*/\1/')
+          VERSION=$(echo "$FILE" | sed -E 's/libc\+\+_([^_]*)_.*/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "file=$FILE" >> $GITHUB_OUTPUT
 
-      - name: Download libc++ packages
+      - name: Download and extract libc++ packages
         run: |
-          BASE_URL="https://grimler.se/termux-packages-24/pool/main/l/libc++"
+          BASE_URL="https://grimler.se/termux-packages-24/pool/main/libc/libc++/"
           declare -A archs=(
             [aarch64]=aarch64
             [arm]=arm
             [i686]=i686
             [x86_64]=x86_64
           )
+          rm -rf libc++
           mkdir -p libc++
           for arch in "${!archs[@]}"; do
             FILE="libc++_${{ steps.get_version.outputs.version }}_${arch}.deb"
-            URL="$BASE_URL/$FILE"
+            URL="$BASE_URL$FILE"
             echo "Downloading $URL"
             wget -q "$URL" -O "$FILE"
             mkdir -p "libc++/$arch"
@@ -55,6 +55,8 @@ jobs:
           done
 
       - name: Commit and push if changed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -63,5 +65,5 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "Update libc++ to version ${{ steps.get_version.outputs.version }}"
-            git push
+            git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
           fi
