@@ -1,0 +1,41 @@
+name: Extract libcares.so
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 0" # every Sunday at 04:00 UTC
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare ABI folders
+        run: |
+          mkdir -p arm64-v8a armeabi-v7a x86 x86_64
+
+      - name: Copy libcares.so for each arch
+        run: |
+          cp c-ares/aarch64/data/data/com.termux/files/usr/lib/libcares.so arm64-v8a/ || echo "aarch64 missing"
+          cp c-ares/arm/data/data/com.termux/files/usr/lib/libcares.so armeabi-v7a/ || echo "arm missing"
+          cp c-ares/i686/data/data/com.termux/files/usr/lib/libcares.so x86/ || echo "i686 missing"
+          cp c-ares/x86_64/data/data/com.termux/files/usr/lib/libcares.so x86_64/ || echo "x86_64 missing"
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          if [ -n "$(git status --porcelain arm64-v8a armeabi-v7a x86 x86_64)" ]; then
+            git add arm64-v8a armeabi-v7a x86 x86_64
+            git commit -m "Update libcares.so extracted from c-ares"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
+          else
+            echo "No updates found."
+          fi
