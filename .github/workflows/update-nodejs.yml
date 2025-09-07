@@ -49,13 +49,18 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+         git config user.name "github-actions[bot]"
+         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if [ -n "$(git status --porcelain nodejs)" ]; then
-            git add nodejs
-            git commit -m "Update nodejs to version ${{ steps.version.outputs.latest }}"
-            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
-          else
-            echo "No updates found."
-          fi
+         git fetch origin main
+         git checkout main
+         git reset --hard origin/main
+ 
+         if [ -n "$(git status --porcelain nodejs)" ]; then
+           git add nodejs
+           git commit -m "Update nodejs to version ${{ steps.version.outputs.latest }}"
+           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
+         else
+           echo "No updates found."
+         fi
+
