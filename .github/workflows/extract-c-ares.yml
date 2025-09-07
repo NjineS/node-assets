@@ -1,0 +1,54 @@
+name: Extract c-ares into ABI folders
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 0" # weekly, 05:00 UTC
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Clean ABI target folders
+        run: |
+          rm -rf arm64-v8a armeabi-v7a x86 x86_64
+
+      - name: Copy extracted include/lib/share into ABI dirs
+        run: |
+          mkdir -p arm64-v8a armeabi-v7a x86 x86_64
+
+          cp -r c-ares/aarch64/data/data/com.termux/files/usr/include arm64-v8a/ || true
+          cp -r c-ares/aarch64/data/data/com.termux/files/usr/lib arm64-v8a/ || true
+          cp -r c-ares/aarch64/data/data/com.termux/files/usr/share arm64-v8a/ || true
+
+          cp -r c-ares/arm/data/data/com.termux/files/usr/include armeabi-v7a/ || true
+          cp -r c-ares/arm/data/data/com.termux/files/usr/lib armeabi-v7a/ || true
+          cp -r c-ares/arm/data/data/com.termux/files/usr/share armeabi-v7a/ || true
+
+          cp -r c-ares/i686/data/data/com.termux/files/usr/include x86/ || true
+          cp -r c-ares/i686/data/data/com.termux/files/usr/lib x86/ || true
+          cp -r c-ares/i686/data/data/com.termux/files/usr/share x86/ || true
+
+          cp -r c-ares/x86_64/data/data/com.termux/files/usr/include x86_64/ || true
+          cp -r c-ares/x86_64/data/data/com.termux/files/usr/lib x86_64/ || true
+          cp -r c-ares/x86_64/data/data/com.termux/files/usr/share x86_64/ || true
+
+      - name: Commit and push extracted ABI files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          if [ -n "$(git status --porcelain arm64-v8a armeabi-v7a x86 x86_64)" ]; then
+            git add arm64-v8a armeabi-v7a x86 x86_64
+            git commit -m "Extract c-ares into ABI-specific folders"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
+          else
+            echo "No changes to commit."
+          fi
