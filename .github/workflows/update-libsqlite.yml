@@ -1,0 +1,61 @@
+name: Update libsqlite
+
+on:
+  schedule:
+    - cron: "0 2 * * 0" # every Sunday at 02:00 UTC
+  workflow_dispatch: # allow manual runs
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget dpkg-dev
+
+      - name: Get latest libsqlite version
+        id: version
+        run: |
+          BASE_URL="https://grimler.se/termux-packages-24/pool/main/libs/libsqlite/"
+          INDEX=$(wget -qO- $BASE_URL)
+          # Extract version like 3.50.4-1
+          LATEST=$(echo "$INDEX" | grep -oP 'libsqlite_\K[0-9]+\.[0-9]+\.[0-9]+-[0-9]+' | sort -V | tail -1)
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+
+      - name: Download and extract debs
+        run: |
+          mkdir -p libsqlite
+          BASE_URL="https://grimler.se/termux-packages-24/pool/main/libs/libsqlite/"
+          for arch in aarch64 arm i686 x86_64; do
+            FILE="libsqlite_${{ steps.version.outputs.latest }}_${arch}.deb"
+            wget -q ${BASE_URL}${FILE}
+
+            # delete old directory if it exists
+            rm -rf libsqlite/$arch
+            mkdir -p libsqlite/$arch
+
+            # extract into fresh directory
+            dpkg-deb -x $FILE libsqlite/$arch
+            rm $FILE
+          done
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain libsqlite)" ]; then
+            git add libsqlite
+            git commit -m "Update libsqlite to version ${{ steps.version.outputs.latest }}"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
+          else
+            echo "No updates found."
+          fi
