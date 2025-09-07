@@ -19,23 +19,23 @@ jobs:
 
       - name: Copy aarch64 → arm64-v8a
         run: |
-          cp -r libc++/aarch64/data/data/com.termux/files/usr/lib arm64-v8a/
-          cp -r libc++/aarch64/data/data/com.termux/files/usr/share arm64-v8a/
+          cp -a libc++/aarch64/data/data/com.termux/files/usr/lib arm64-v8a/
+          cp -a libc++/aarch64/data/data/com.termux/files/usr/share arm64-v8a/
 
       - name: Copy arm → armeabi-v7a
         run: |
-          cp -r libc++/arm/data/data/com.termux/files/usr/lib armeabi-v7a/
-          cp -r libc++/arm/data/data/com.termux/files/usr/share armeabi-v7a/
+          cp -a libc++/arm/data/data/com.termux/files/usr/lib armeabi-v7a/
+          cp -a libc++/arm/data/data/com.termux/files/usr/share armeabi-v7a/
 
       - name: Copy i686 → x86
         run: |
-          cp -r libc++/i686/data/data/com.termux/files/usr/lib x86/
-          cp -r libc++/i686/data/data/com.termux/files/usr/share x86/
+          cp -a libc++/i686/data/data/com.termux/files/usr/lib x86/
+          cp -a libc++/i686/data/data/com.termux/files/usr/share x86/
 
       - name: Copy x86_64 → x86_64
         run: |
-          cp -r libc++/x86_64/data/data/com.termux/files/usr/lib x86_64/
-          cp -r libc++/x86_64/data/data/com.termux/files/usr/share x86_64/
+          cp -a libc++/x86_64/data/data/com.termux/files/usr/lib x86_64/
+          cp -a libc++/x86_64/data/data/com.termux/files/usr/share x86_64/
 
       - name: Commit and push extracted libc++ assets
         run: |
