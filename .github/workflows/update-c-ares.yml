@@ -5,6 +5,10 @@ on:
     - cron: "0 0 * * 0" # every Sunday at midnight UTC
   workflow_dispatch: # allow manual runs
 
+permissions:
+  contents: write
+
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -46,7 +50,7 @@ jobs:
           if [ -n "$(git status --porcelain c-ares)" ]; then
             git add c-ares
             git commit -m "Update c-ares to version ${{ steps.version.outputs.latest }}"
-            git push
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
           else
             echo "No updates found."
           fi
