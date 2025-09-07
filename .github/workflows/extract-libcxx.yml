@@ -1,9 +1,12 @@
-name: Extract libc++_shared.so
+name: Extract libc++ assets
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "0 5 * * 0" # every Sunday at 05:00 UTC
+    - cron: "0 6 * * 0"   # Every Sunday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   extract:
@@ -11,19 +14,30 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Prepare ABI folders
+      - name: Copy aarch64 → arm64-v8a
         run: |
-          mkdir -p arm64-v8a armeabi-v7a x86 x86_64
+          cp -r libc++/aarch64/data/data/com.termux/files/usr/lib arm64-v8a/
+          cp -r libc++/aarch64/data/data/com.termux/files/usr/share arm64-v8a/
 
-      - name: Copy libc++_shared.so for each arch
+      - name: Copy arm → armeabi-v7a
         run: |
-          cp libc++/aarch64/data/data/com.termux/files/usr/lib/libc++_shared.so arm64-v8a/ || echo "aarch64 missing"
-          cp libc++/arm/data/data/com.termux/files/usr/lib/libc++_shared.so armeabi-v7a/ || echo "arm missing"
-          cp libc++/i686/data/data/com.termux/files/usr/lib/libc++_shared.so x86/ || echo "i686 missing"
-          cp libc++/x86_64/data/data/com.termux/files/usr/lib/libc++_shared.so x86_64/ || echo "x86_64 missing"
+          cp -r libc++/arm/data/data/com.termux/files/usr/lib armeabi-v7a/
+          cp -r libc++/arm/data/data/com.termux/files/usr/share armeabi-v7a/
 
-      - name: Commit and push changes
+      - name: Copy i686 → x86
+        run: |
+          cp -r libc++/i686/data/data/com.termux/files/usr/lib x86/
+          cp -r libc++/i686/data/data/com.termux/files/usr/share x86/
+
+      - name: Copy x86_64 → x86_64
+        run: |
+          cp -r libc++/x86_64/data/data/com.termux/files/usr/lib x86_64/
+          cp -r libc++/x86_64/data/data/com.termux/files/usr/share x86_64/
+
+      - name: Commit and push extracted libc++ assets
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -34,7 +48,7 @@ jobs:
 
           if [ -n "$(git status --porcelain arm64-v8a armeabi-v7a x86 x86_64)" ]; then
             git add arm64-v8a armeabi-v7a x86 x86_64
-            git commit -m "Update libc++_shared.so extracted from libc++"
+            git commit -m "Extracted libc++ assets into ABI directories"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
           else
             echo "No updates found."
