@@ -1,0 +1,61 @@
+name: Update nodejs
+
+on:
+  schedule:
+    - cron: "0 3 * * 0" # every Sunday at 03:00 UTC
+  workflow_dispatch: # allow manual runs
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget dpkg-dev
+
+      - name: Get latest nodejs version
+        id: version
+        run: |
+          BASE_URL="https://grimler.se/termux-packages-24/pool/main/n/nodejs/"
+          INDEX=$(wget -qO- $BASE_URL)
+          # Extract version like 24.7.0
+          LATEST=$(echo "$INDEX" | grep -oP 'nodejs_\K[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+
+      - name: Download and extract debs
+        run: |
+          mkdir -p nodejs
+          BASE_URL="https://grimler.se/termux-packages-24/pool/main/n/nodejs/"
+          for arch in aarch64 arm i686 x86_64; do
+            FILE="nodejs_${{ steps.version.outputs.latest }}_${arch}.deb"
+            wget -q ${BASE_URL}${FILE}
+
+            # delete old directory if it exists
+            rm -rf nodejs/$arch
+            mkdir -p nodejs/$arch
+
+            # extract into fresh directory
+            dpkg-deb -x $FILE nodejs/$arch
+            rm $FILE
+          done
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain nodejs)" ]; then
+            git add nodejs
+            git commit -m "Update nodejs to version ${{ steps.version.outputs.latest }}"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
+          else
+            echo "No updates found."
+          fi
