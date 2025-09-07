@@ -8,7 +8,6 @@ on:
 permissions:
   contents: write
 
-
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -37,7 +36,12 @@ jobs:
           for arch in aarch64 arm i686 x86_64; do
             FILE="c-ares_${{ steps.version.outputs.latest }}_${arch}.deb"
             wget -q ${BASE_URL}${FILE}
+
+            # delete old directory if it exists
+            rm -rf c-ares/$arch
             mkdir -p c-ares/$arch
+
+            # extract into fresh directory
             dpkg-deb -x $FILE c-ares/$arch
             rm $FILE
           done
